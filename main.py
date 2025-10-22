@@ -1,6 +1,6 @@
 # main.py
 # ========================
-# AI Chatbot - Main Entry
+# AI Chatbot - Main Entry Point
 # ========================
 
 import os
@@ -18,8 +18,9 @@ LOG_FILE = os.path.join(LOGS_DIR, "chat_log.txt")
 
 def log_message(user, message):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    with open(LOG_FILE, "a") as f:
-        f.write(f"[{timestamp}] {user}: {message}\n")
+    if SAVE_LOGS:
+        with open(LOG_FILE, "a") as f:
+            f.write(f"[{timestamp}] {user}: {message}\n")
 
 # ------------------------
 # Loading Animation
@@ -42,7 +43,7 @@ def print_intro():
     else:
         print("[Logo not found. Generating AI logo...]")
         loading_animation(2)
-        generate_ui_image("Black and white minimalistic AI logo", "logo.png")
+        generate_ui_image(UI_ELEMENTS["logo"], "logo.png")
         print("[Logo generated!]\n")
     print(random_tip())
     print("\nType /help for commands.\n")
@@ -50,10 +51,12 @@ def print_intro():
 # ------------------------
 # Command Handling
 # ------------------------
-def handle_command(command):
-    command = command.strip()
-    log_message("USER", command)
+def handle_command(command, history):
+    command = clamp_input(command.strip())
+    log_message(DEFAULT_USER_NAME, command)
+    history.append({"role": "user", "content": command})
 
+    # ---------------- Fact Command ----------------
     if command.startswith("/fact"):
         topic = command[6:].strip()
         if not topic:
@@ -62,23 +65,27 @@ def handle_command(command):
         loading_animation()
         fact = get_fact(topic)
         print(WHITE + f"[FACT] {fact}" + RESET)
+        history.append({"role": "ai", "content": fact})
 
+    # ---------------- Deliver Button ----------------
     elif command.startswith("/deliver"):
         print(WHITE + "[Deliver button pressed!]" + RESET)
         img_path = os.path.join(IMAGES_DIR, "deliver_button.png")
         if not os.path.exists(img_path):
             loading_animation()
-            generate_ui_image("Black and white Deliver button", "deliver_button.png")
+            generate_ui_image(UI_ELEMENTS["deliver_button"], "deliver_button.png")
         print(f"[Button image at {img_path}]")
 
+    # ---------------- Jazz Icon ----------------
     elif command.startswith("/jazz"):
         print(WHITE + "[Jazz mode activated!]" + RESET)
         img_path = os.path.join(IMAGES_DIR, "jazz_icon.png")
         if not os.path.exists(img_path):
             loading_animation()
-            generate_ui_image("Black and white Jazz icon", "jazz_icon.png")
+            generate_ui_image(UI_ELEMENTS["jazz_icon"], "jazz_icon.png")
         print(f"[Jazz icon at {img_path}]")
 
+    # ---------------- Help Command ----------------
     elif command == "/help":
         print(WHITE + """
 Available Commands:
@@ -88,23 +95,26 @@ Available Commands:
 /exit                - Quit chatbot
 """ + RESET)
 
+    # ---------------- AI Response ----------------
     else:
-        # Default: AI-generated response
         loading_animation()
-        ai_text = get_ai_response(command)
+        ai_text = get_ai_response(command, history)
         print(WHITE + ai_text + RESET)
+        history.append({"role": "ai", "content": ai_text})
 
 # ------------------------
 # Chat Loop
 # ------------------------
 def chat_loop():
+    chat_history = load_chat_history()
     print_intro()
     while True:
         user_input = input(BOLD + WHITE + "You> " + RESET)
         if user_input.lower() in ["/exit", "quit"]:
             print(WHITE + "Goodbye!" + RESET)
+            save_chat_history(chat_history)
             break
-        handle_command(user_input)
+        handle_command(user_input, chat_history)
         time.sleep(0.2)
         print(random_tip())
 
@@ -113,4 +123,3 @@ def chat_loop():
 # ------------------------
 if __name__ == "__main__":
     chat_loop()
-
